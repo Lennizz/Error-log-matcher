@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Error Recognizer</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ericsson-blue: #00225c;
+      --ericsson-light-blue: #0077c8;
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --border: #d1d5db;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --success-bg: #d4edda;
+      --success-text: #155724;
+      --success-border: #c3e6cb;
+      --danger: #dc2626;
+      --r: 4px; 
+      --font-main: 'Inter', system-ui, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    body { font-family: var(--font-main); background: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    .header h1 { font-size: 1.25rem; font-weight: 700; color: var(--ericsson-blue); letter-spacing: -0.02em; }
+
+    .tabs-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; gap: 2rem; }
+    .tab-btn { background: none; border: none; padding: 1rem 0; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+    .tab-btn:hover { color: var(--ericsson-light-blue); }
+    .tab-btn.active { color: var(--ericsson-blue); border-bottom-color: var(--ericsson-light-blue); }
+
+    .container { flex: 1; padding: 2rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    .split-layout { display: flex; gap: 2rem; height: calc(100vh - 180px); }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    .panel-left { flex: 1; }
+    .panel-right { flex: 1; background: #fafafa; overflow-y: auto; }
+
+    .panel-title { font-size: 1.1rem; font-weight: 600; color: var(--ericsson-blue); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+
+    label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; display: block; }
+    textarea, input[type="text"], select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.85rem; outline: none; transition: 0.2s; }
+    textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--ericsson-light-blue); box-shadow: 0 0 0 1px var(--ericsson-light-blue); }
+    
+    button.primary { background: var(--ericsson-light-blue); border: none; color: white; border-radius: var(--r); padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    button.primary:hover { background: #005a9c; }
+    button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text-main); border-radius: var(--r); padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+    button.secondary:hover { background: var(--bg); }
+    button.danger-text { background: none; border: none; color: var(--danger); font-size: 0.8rem; font-weight: 500; cursor: pointer; padding: 0.4rem 0.8rem; }
+    button.danger-text:hover { text-decoration: underline; }
+    
+    button.action-btn { background: #10b981; border: none; color: white; padding: 0.75rem; border-radius: var(--r); font-weight: 600; cursor: pointer; width: 100%; margin-top: 1rem; }
+    button.action-btn:hover { background: #059669; }
+
+    /* Modal Overlay */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: var(--surface); width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; border-radius: var(--r); padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+
+    .profile-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--ericsson-blue); padding: 1rem; border-radius: var(--r); margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem;}
+    .profile-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .profile-card h3 { font-size: 1rem; color: var(--ericsson-blue); }
+    .profile-card .desc { font-size: 0.85rem; color: var(--text-muted); }
+    .badge { background: var(--bg); border: 1px solid var(--border); padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-family: var(--font-mono); }
+
+    .match-result { padding: 1.5rem; border-radius: var(--r); border: 1px solid var(--success-border); background-color: var(--surface); display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .match-result.warning { border-color: #ffeeba; }
+    .instruction-box { background: var(--bg); padding: 1rem; border-radius: var(--r); border-left: 3px solid var(--ericsson-light-blue); font-size: 0.9rem; white-space: pre-wrap;}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    {% raw %}
+    const { useState, useEffect } = React;
+
+    // ── Search Tab ─────────────────────────────────────────────────────────
+    function SearchTab() {
+      const [logInput, setLogInput] = useState("");
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [result, setResult] = useState(null);
+      const [taskStatus, setTaskStatus] = useState("");
+
+      const handleAnalyze = async () => {
+        if (!logInput.trim()) return;
+        setIsAnalyzing(true); setResult(null); setTaskStatus("");
+        try {
+          const response = await fetch("/api/analyze", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ log: logInput })
+          });
+          setResult(await response.json());
+        } catch (error) { setResult({ error: "Failed to connect to backend." }); } 
+        finally { setIsAnalyzing(false); }
+      };
+
+      const executeTask = async (task) => {
+        setTaskStatus("Executing...");
+        try {
+          const res = await fetch(task.url, {
+            method: task.method,
+            headers: task.method !== 'GET' ? { "Content-Type": "application/json" } : undefined,
+            body: task.method !== 'GET' && task.payload ? task.payload : undefined
+          });
+          if (res.ok) setTaskStatus("Task Executed Successfully!");
+          else setTaskStatus("Task Failed: " + res.statusText);
+        } catch (e) {
+          setTaskStatus("Execution Error (Check CORS or network): " + e.message);
+        }
+      };
+
+      return (
+        <div className="split-layout">
+          <div className="panel panel-left">
+            <h2 className="panel-title">Log Analyzer</h2>
+            <textarea placeholder="Paste full failed step log here..." style={{flex: 1}} value={logInput} onChange={(e) => setLogInput(e.target.value)} />
+            <button className="primary" onClick={handleAnalyze} disabled={isAnalyzing}>
+              {isAnalyzing ? "Analyzing..." : "Analyze Log"}
+            </button>
+          </div>
+
+          <div className="panel panel-right">
+            <h2 className="panel-title">Analysis Results</h2>
+            {isAnalyzing && <p>Scanning log...</p>}
+            
+            {!isAnalyzing && result && result.match && (
+              <div className="match-result">
+                <div>
+                  <h3 style={{color: "var(--success-text)", marginBottom: "0.5rem"}}>Match Found: {result.profile.name}</h3>
+                  <p style={{fontSize: "0.85rem", color: "var(--text-muted)"}}>{result.profile.description}</p>
+                </div>
+                
+                <div className="instruction-box">
+                  <strong>Resolution Instructions:</strong><br/>
+                  {result.profile.instructions || "No instructions provided for this profile."}
+                </div>
+
+                {result.profile.task && result.profile.task.enabled && (
+                  <div>
+                    <button className="action-btn" onClick={() => executeTask(result.profile.task)}>
+                      🚀 Run Automated Fix Task
+                    </button>
+                    {taskStatus && <p style={{fontSize: "0.85rem", marginTop: "0.5rem", textAlign: "center"}}>{taskStatus}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+            {!isAnalyzing && result && !result.match && (
+              <div className="match-result warning">
+                <h3>No Exact Match</h3>
+                <p>{result.message}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Profiles Tab ───────────────────────────────────────────────────────
+    function ProfilesTab() {
+      const [profiles, setProfiles] = useState([]);
+      const [showModal, setShowModal] = useState(false);
+      const [editingId, setEditingId] = useState(null); // Tracks if we are editing
+      
+      // Form State
+      const [name, setName] = useState("");
+      const [description, setDescription] = useState("");
+      const [patterns, setPatterns] = useState([""]);
+      const [instructions, setInstructions] = useState("");
+      const [taskEnabled, setTaskEnabled] = useState(false);
+      const [taskUrl, setTaskUrl] = useState("");
+      const [taskMethod, setTaskMethod] = useState("POST");
+      const [taskPayload, setTaskPayload] = useState("{}");
+
+      useEffect(() => { loadProfiles(); }, []);
+
+      const loadProfiles = () => {
+        fetch("/api/profiles").then(res => res.json()).then(setProfiles);
+      };
+
+      const handleAddPattern = () => setPatterns([...patterns, ""]);
+      const handlePatternChange = (index, value) => {
+        const newPatterns = [...patterns];
+        newPatterns[index] = value;
+        setPatterns(newPatterns);
+      };
+      const handleRemovePattern = (index) => {
+        setPatterns(patterns.filter((_, i) => i !== index));
+      };
+
+      const openCreateModal = () => {
+        setEditingId(null);
+        setName(""); setDescription(""); setPatterns([""]); setInstructions(""); 
+        setTaskEnabled(false); setTaskUrl(""); setTaskMethod("POST"); setTaskPayload("{}");
+        setShowModal(true);
+      };
+
+      const openEditModal = (profile) => {
+        setEditingId(profile.id);
+        setName(profile.name || "");
+        setDescription(profile.description || "");
+        setPatterns(profile.patterns && profile.patterns.length > 0 ? profile.patterns : [""]);
+        setInstructions(profile.instructions || "");
+        if (profile.task) {
+          setTaskEnabled(profile.task.enabled || false);
+          setTaskUrl(profile.task.url || "");
+          setTaskMethod(profile.task.method || "POST");
+          setTaskPayload(profile.task.payload || "{}");
+        }
+        setShowModal(true);
+      };
+
+      const handleDelete = async (id) => {
+        if (!confirm("Are you sure you want to delete this profile?")) return;
+        await fetch(`/api/profiles/${id}`, { method: "DELETE" });
+        loadProfiles();
+      };
+
+      const handleSave = async () => {
+        const payload = {
+          name, description, instructions,
+          patterns: patterns.filter(p => p.trim() !== ""),
+          task: { enabled: taskEnabled, url: taskUrl, method: taskMethod, payload: taskPayload }
+        };
+
+        const url = editingId ? `/api/profiles/${editingId}` : "/api/profiles";
+        const method = editingId ? "PUT" : "POST";
+
+        await fetch(url, {
+          method: method, 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify(payload)
+        });
+        
+        setShowModal(false);
+        loadProfiles();
+      };
+
+      return (
+        <div>
+          <div style={{display: "flex", justifyContent: "space-between", marginBottom: "2rem"}}>
+            <h2>Active Error Profiles</h2>
+            <button className="primary" onClick={openCreateModal}>+ Create Profile</button>
+          </div>
+
+          <div className="profile-list">
+            {profiles.map(p => (
+              <div key={p.id} className="profile-card">
+                <div className="profile-header">
+                  <h3>{p.name}</h3>
+                  <div style={{display: "flex", gap: "0.5rem"}}>
+                    <button className="secondary" onClick={() => openEditModal(p)}>Edit</button>
+                    <button className="danger-text" onClick={() => handleDelete(p.id)}>Delete</button>
+                  </div>
+                </div>
+                <p className="desc">{p.description}</p>
+                <div style={{display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem"}}>
+                  {p.patterns.map((pat, i) => <span key={i} className="badge">{pat}</span>)}
+                </div>
+                {p.task && p.task.enabled && <span className="badge" style={{marginTop: "0.5rem", display: "inline-block", background: "#e0f2fe", color: "#0369a1", borderColor: "#bae6fd"}}>⚡ Automated Task Linked</span>}
+              </div>
+            ))}
+          </div>
+
+          {/* Edit/Create Modal */}
+          {showModal && (
+            <div className="modal-overlay">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h2>{editingId ? "Edit Error Profile" : "Create New Error Profile"}</h2>
+                  <button className="secondary" onClick={() => setShowModal(false)}>Close</button>
+                </div>
+
+                <div>
+                  <label>Profile Name</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Database Timeout" />
+                </div>
+                
+                <div>
+                  <label>Short Description</label>
+                  <input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="What causes this error?" />
+                </div>
+
+                <div>
+                  <label>Error Messages / Masked Patterns</label>
+                  {patterns.map((pat, index) => (
+                    <div key={index} style={{display: "flex", gap: "0.5rem", marginBottom: "0.5rem"}}>
+                      <input type="text" value={pat} onChange={e => handlePatternChange(index, e.target.value)} placeholder="FATAL: Connection to <RESOURCE>..." />
+                      <button className="secondary" onClick={() => handleRemovePattern(index)}>X</button>
+                    </div>
+                  ))}
+                  <button className="secondary" onClick={handleAddPattern}>+ Add Another Pattern</button>
+                </div>
+
+                <div>
+                  <label>Resolution Instructions</label>
+                  <textarea rows="3" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Step 1: Check VPN. Step 2: Restart service..."></textarea>
+                </div>
+
+                <div style={{border: "1px solid var(--border)", padding: "1rem", borderRadius: "var(--r)", background: "var(--bg)"}}>
+                  <label style={{display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer"}}>
+                    <input type="checkbox" checked={taskEnabled} onChange={e => setTaskEnabled(e.target.checked)} />
+                    Enable Automated Execution Task (API Call)
+                  </label>
+                  
+                  {taskEnabled && (
+                    <div style={{marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem"}}>
+                      <div style={{display: "flex", gap: "0.5rem"}}>
+                        <select value={taskMethod} onChange={e => setTaskMethod(e.target.value)} style={{width: "100px"}}>
+                          <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+                        </select>
+                        <input type="text" value={taskUrl} onChange={e => setTaskUrl(e.target.value)} placeholder="https://api.example.com/restart-service" />
+                      </div>
+                      <textarea rows="2" value={taskPayload} onChange={e => setTaskPayload(e.target.value)} placeholder="JSON Payload (if POST/PUT)"></textarea>
+                    </div>
+                  )}
+                </div>
+
+                <button className="primary" onClick={handleSave} style={{width: "100%", padding: "1rem"}}>
+                  {editingId ? "Save Changes" : "Save Profile"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [activeTab, setActiveTab] = useState("search");
+      return (
+        <>
+          <header className="header">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ericsson-blue)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <h1>Error Recognizer (EDS)</h1>
+          </header>
+          <nav className="tabs-nav">
+            <button className={`tab-btn ${activeTab === 'search' ? 'active' : ''}`} onClick={() => setActiveTab('search')}>Log Search</button>
+            <button className={`tab-btn ${activeTab === 'profiles' ? 'active' : ''}`} onClick={() => setActiveTab('profiles')}>Error Profiles</button>
+          </nav>
+          <main className="container">
+            {activeTab === 'search' ? <SearchTab /> : <ProfilesTab />}
+          </main>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    {% endraw %}
+  </script>
+</body>
+</html>
